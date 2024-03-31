@@ -39,7 +39,6 @@ Future launches would require running `source /path/to/venv/bin/activate` to ent
 
 # Known bugs/issues
 
-- Large context hits the rate limit due to `count_tokens()` making API calls.
 - Gemini Pro 1.0 can block requests for reason other.
 
 # Future work

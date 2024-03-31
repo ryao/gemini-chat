@@ -22,6 +22,12 @@ model = genai.GenerativeModel(MODEL)
 # Conversation history
 conversation_history = []
 
+def count_chars(messages):
+    chars = 0
+    for message in messages:
+        chars += len(message['parts'])
+    return chars
+
 def count_tokens(messages):
     tokens = 0
     for message in messages:
@@ -37,6 +43,17 @@ def generate_response(prompt, conversation_history):
         messages.append({"role": "model", "parts": msg['response']})
 
     messages.append({"role": "user", "parts": prompt})
+
+    # Check if the token count exceeds the limit via Google's 4 characters per
+    # token estimation. This is to minimize count_tokens() invocations, which
+    # can hit the rate limit.
+    while count_chars(messages) > 30720 * 4:
+        # Remove the oldest user-assistant message pair
+        if len(messages) >= 3:
+            messages.pop(1)  # Remove the oldest user message
+            messages.pop(1)  # Remove the corresponding assistant message
+        else:
+            break
 
     # Check if the token count exceeds the limit
     while count_tokens(messages) > 30720:
