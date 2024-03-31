@@ -8,10 +8,10 @@ This is intended to serve as a proof of concept for features that I would like t
 - Easy deletion
 - No censorship
 
-It is a combination that is absent from all major LLM chat interfaces that I
-have tried, which include ChatGPT, Google Gemini, Mistral, Perplexity,
-Openrouter.ai Playground, Claude.ai and Poe. You often have a few of these
-features, but not all of them together.
+Even without the last point, this is a combination that is absent from all
+major LLM chat interfaces that I have tried, which include ChatGPT, Google
+Gemini, Mistral, Perplexity, Openrouter.ai Playground, Claude.ai and Poe. You
+often have a few of these features, but not all of them together.
 
 # How to use
 
