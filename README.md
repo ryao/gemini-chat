@@ -23,7 +23,13 @@ source /path/to/venv/bin/activate
 pip install google-generativeai flask
 ```
 
-Edit the app.py to replace `YOUR_API_KEY` with your gemini API key. If you do not have one, you may get one at:
+Either `export GEMINI_CHAT_API_KEY=YOUR_API_KEY` or
+`echo YOUR_API_KEY > ${HOME}/.gemini-chat-api-key`, replacing `YOUR_API_KEY`
+with your gemini API key. The former will need to be done before future
+sessions while the latter will persist across sessions. The environment
+variable takes precedence over the key file.
+
+If you do not have an API key, you may get one at:
 
 https://makersuite.google.com/app/apikey
 
@@ -46,7 +52,6 @@ Future launches would require running `source /path/to/venv/bin/activate` to ent
 As this is a proof of concept, I have no current plans for revisions, but I can think of a few things that I would do if I pursued them:
 
 - Make the interface nicer.
-- Get the `API_KEY` from an environment variable, a dot file, or both with one as a fallback.
 - Add support for more LLMs, and dynamic LLM switching.
 - Add support for modifying temperature, topP and topK.
 - Make an extensible JSON format rather than the naive one currently implemented, plus make a conversion tool for old saves.

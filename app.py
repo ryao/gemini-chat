@@ -1,11 +1,25 @@
+import os
+from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 import json
 import google.generativeai as genai
 
 app = Flask(__name__)
 
-# Replace 'YOUR_API_KEY' with your actual API key
-GOOGLE_API_KEY = 'YOUR_API_KEY'
+# Check for the API key in the environment variable
+GOOGLE_API_KEY = os.environ.get('GEMINI_CHAT_API_KEY')
+
+# If the API key is not found in the environment variable, check the user's home directory
+if GOOGLE_API_KEY is None:
+    home_dir = Path.home()
+    api_key_file = home_dir / '.gemini-chat-api-key'
+    if api_key_file.exists():
+        with api_key_file.open('r') as file:
+            GOOGLE_API_KEY = file.read().strip()
+
+# If the API key is still not found, raise an error
+if GOOGLE_API_KEY is None:
+    raise ValueError("API key not found. Please set the 'GEMINI_CHAT_API_KEY' environment variable or create a '.gemini-chat-api-key' file in your home directory.")
 
 # Set the model and safety settings
 MODEL = 'gemini-1.0-pro-latest'
