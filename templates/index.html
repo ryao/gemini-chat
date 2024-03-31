@@ -121,6 +121,12 @@
                 var original_text = message.html().replace(/<br>/g, '\n');
 
                 message.html('<textarea class="edit-input">' + original_text + '</textarea>');
+
+                // Automatically resize the textarea to fit its contents
+                var textarea = messageElement.find('.edit-input');
+                textarea.css('height', 'auto');
+		textarea.css('height', Math.max(textarea[0].scrollHeight, 100) + 'px');
+
                 messageElement.find('.message-buttons').find('.edit-btn, .delete-btn').hide();
                 messageElement.find('.message-buttons').find('.save-btn, .cancel-btn').show();
             });
