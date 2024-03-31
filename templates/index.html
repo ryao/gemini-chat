@@ -53,26 +53,28 @@
                 var user_input = $('#user-input').val();
                 var chatForm = $(this);
 
+                // Get the last edit button before the chat form
                 var lastEditButton = chatForm.prev('.chatbot-response').find('.edit-btn');
                 var lastIndex = lastEditButton.length > 0 ? parseInt(lastEditButton.attr('data-index')) : -1;
+                var newIndex = lastIndex + 1;
 
                 // Create user input element
                 var userInputElement = $('<div class="user-input"></div>');
                 userInputElement.append('<span>' + user_input.replace(/\n/g, '<br>') + '</span>');
                 var userInputButtons = $('<div class="message-buttons"></div>');
-                userInputButtons.append('<button class="edit-btn" data-index="' + (lastIndex + 1) + '" data-message-type="user_input">Edit</button>');
-                userInputButtons.append('<button class="save-btn" data-index="' + (lastIndex + 1) + '" data-message-type="user_input" style="display: none;">Save</button>');
-                userInputButtons.append('<button class="cancel-btn" data-index="' + (lastIndex + 1) + '" data-message-type="user_input" style="display: none;">Cancel</button>');
-                userInputButtons.append('<button class="delete-btn" data-index="' + (lastIndex + 1) + '">Delete</button>');
+                userInputButtons.append('<button class="edit-btn" data-index="' + newIndex + '" data-message-type="user_input">Edit</button>');
+                userInputButtons.append('<button class="save-btn" data-index="' + newIndex + '" data-message-type="user_input" style="display: none;">Save</button>');
+                userInputButtons.append('<button class="cancel-btn" data-index="' + newIndex + '" data-message-type="user_input" style="display: none;">Cancel</button>');
+                userInputButtons.append('<button class="delete-btn" data-index="' + newIndex + '">Delete</button>');
                 userInputElement.append(userInputButtons);
 
                 // Create response element
                 var responseElement = $('<div class="chatbot-response"></div>');
                 responseElement.append('<span></span>');
                 var responseButtons = $('<div class="message-buttons"></div>');
-                responseButtons.append('<button class="edit-btn" data-index="' + (lastIndex + 1) + '" data-message-type="response">Edit</button>');
-                responseButtons.append('<button class="save-btn" data-index="' + (lastIndex + 1) + '" data-message-type="response" style="display: none;">Save</button>');
-                responseButtons.append('<button class="cancel-btn" data-index="' + (lastIndex + 1) + '" data-message-type="response" style="display: none;">Cancel</button>');
+                responseButtons.append('<button class="edit-btn" data-index="' + newIndex + '" data-message-type="response">Edit</button>');
+                responseButtons.append('<button class="save-btn" data-index="' + newIndex + '" data-message-type="response" style="display: none;">Save</button>');
+                responseButtons.append('<button class="cancel-btn" data-index="' + newIndex + '" data-message-type="response" style="display: none;">Cancel</button>');
                 responseElement.append(responseButtons);
 
                 // Prepend user input and response elements before the chat form
