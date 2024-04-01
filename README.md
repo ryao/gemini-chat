@@ -43,10 +43,6 @@ You may then go to `http://localhost:5000` in your web browser.
 
 Future launches would require running `source /path/to/venv/bin/activate` to enter the virtual environment before running the python command if you install the prerequisite libraries through it.
 
-# Known bugs/issues
-
-- Gemini Pro 1.0 can block requests for reason other.
-
 # Future work
 
 As this is a proof of concept, I have no current plans for revisions, but I can think of a few things that I would do if I pursued them:

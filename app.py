@@ -122,11 +122,16 @@ def edit():
         response_stream = generate_response(edited_text, conversation_history_subset)
 
         def generate(index):
-            s = ''
-            for chunk in response_stream:
-                s += chunk
-                yield chunk
-            conversation_history[index]['response'] = s.strip()
+            try:
+                s = ''
+                for chunk in response_stream:
+                    s += chunk
+                    yield chunk
+                conversation_history[index]['response'] = s.strip()
+            except BlockedPromptException as e:
+                error_message = "The content was blocked for reason: OTHER"
+                yield error_message
+                conversation_history[index]['response'] = error_message
 
         return app.response_class(generate(index), mimetype='text/event-stream')
 
