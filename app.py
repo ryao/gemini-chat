@@ -117,8 +117,8 @@ def edit():
         conversation_history[index]['response'] = edited_text
 
     if message_type == 'user_input':
-        # Get the conversation history up to and including the edited prompt
-        conversation_history_subset = conversation_history[:index+1]
+        # Get the conversation history up to but not including the edited prompt
+        conversation_history_subset = conversation_history[:index]
         response_stream = generate_response(edited_text, conversation_history_subset)
 
         def generate(index):
