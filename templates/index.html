@@ -137,6 +137,9 @@
                 var messageElement = $(this).closest('.user-input, .chatbot-response');
                 var edited_text = messageElement.find('.edit-input').val();
 
+                // Hide the save button and cancel button when the save button is clicked
+                messageElement.find('.save-btn, .cancel-btn').hide();
+
                 if (message_type === 'user_input') {
                     messageElement.find('span').html(edited_text.replace(/\n/g, '<br>'));
 
@@ -161,8 +164,6 @@
                         success: function() {
                             messageElement.find('.edit-input').remove();
                             messageElement.find('.edit-btn').show();
-                            messageElement.find('.save-btn').hide();
-                            messageElement.find('.cancel-btn').hide();
                             messageElement.find('.delete-btn').show();
                         }
                     });
@@ -176,8 +177,6 @@
                             messageElement.find('span').html(edited_text.replace(/\n/g, '<br>'));
                             messageElement.find('.edit-input').remove();
                             messageElement.find('.edit-btn').show();
-                            messageElement.find('.save-btn').hide();
-                            messageElement.find('.cancel-btn').hide();
                         }
                     });
                 }
