@@ -203,13 +203,31 @@
             // Delete functionality
             $(document).on('click', '.delete-btn', function() {
                 var index = $(this).data('index');
+                var userInputElement = $(this).closest('.user-input');
+                var responseElement = userInputElement.next('.chatbot-response');
+
+                // Send the delete request to the server
                 $.ajax({
                     url: '/delete',
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({ index: index }),
                     success: function(response) {
-                        location.reload();
+                        // Remove the user input and response elements from the page
+                        userInputElement.remove();
+                        responseElement.remove();
+
+                        // Check if the deleted pair is not the last one
+                        if (index < $('.user-input').length) {
+                            // Renumber the data indices of the remaining elements
+                            $('.user-input, .chatbot-response').each(function(i) {
+                                var newIndex = Math.floor(i / 2);
+                                $(this).find('.edit-btn, .save-btn, .cancel-btn, .delete-btn').attr('data-index', newIndex);
+                            });
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error deleting prompt+response pair:', error);
                     }
                 });
             });
