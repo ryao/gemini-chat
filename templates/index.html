@@ -113,7 +113,7 @@
             });
 
             // Edit functionality
-            $(document).on('click', '.edit-btn', function() {
+               $(document).on('click', '.edit-btn', function() {
                 var index = $(this).data('index');
                 var message_type = $(this).data('message-type');
                 var messageElement = $(this).closest('.user-input, .chatbot-response');
@@ -125,10 +125,20 @@
                 // Automatically resize the textarea to fit its contents
                 var textarea = messageElement.find('.edit-input');
                 textarea.css('height', 'auto');
-		textarea.css('height', Math.max(textarea[0].scrollHeight, 100) + 'px');
+                textarea.css('height', Math.max(textarea[0].scrollHeight, 100) + 'px');
 
                 messageElement.find('.message-buttons').find('.edit-btn, .delete-btn').hide();
                 messageElement.find('.message-buttons').find('.save-btn, .cancel-btn').show();
+
+                // Focus on the edit input
+                textarea.focus();
+            });
+
+            $(document).on('keydown', '.edit-input', function(event) {
+                if (event.keyCode === 13 && !event.shiftKey) {
+                    event.preventDefault();
+                    $(this).closest('.user-input, .chatbot-response').find('.save-btn').click();
+                }
             });
 
             $(document).on('click', '.save-btn', function() {
