@@ -48,6 +48,7 @@ Future launches would require running `source /path/to/venv/bin/activate` to ent
 As this is a proof of concept, I have no current plans for revisions, but I can think of a few things that I would do if I pursued them:
 
 - Make the interface nicer.
+- Add option to cancel in-progress LLM query.
 - Add support for more LLMs, and dynamic LLM switching.
 - Add support for modifying temperature, topP and topK.
 - Make an extensible JSON format rather than the naive one currently implemented, plus make a conversion tool for old saves.
