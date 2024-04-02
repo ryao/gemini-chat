@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 import json
-import google.generativeai as genai
+import requests
 
 app = Flask(__name__)
 
@@ -23,18 +23,11 @@ if GOOGLE_API_KEY is None:
 
 # Set the model and safety settings
 MODEL = 'gemini-1.0-pro-latest'
-SAFETY_SETTINGS = {
-    'HARASSMENT': 'block_none',
-    'HATE_SPEECH': 'block_none',
-    'DANGEROUS': 'block_none',
-    'SEXUAL': 'block_none'
-}
-
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel(MODEL)
 
 # Conversation history
 conversation_history = []
+
+API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:{function}?key={key}"
 
 token_count_cache = {}
 
@@ -42,12 +35,39 @@ def count_tokens_cached(text, index):
     if index in token_count_cache:
         return token_count_cache[index]
     else:
-        token_count = model.count_tokens(text).total_tokens
+        token_count = count_tokens(text)
         token_count_cache[index] = token_count
         return token_count
 
+def count_tokens(text):
+    # Prepare the request payload for counting tokens
+    payload = {
+        "contents": [{
+            "parts": [{
+                "text": text
+            }]
+        }]
+    }
+
+    # Make a POST request to the REST API to count tokens
+    response = requests.post(
+        API_URL.format(model=MODEL, function="countTokens", key=GOOGLE_API_KEY),
+        headers={"Content-Type": "application/json"},
+        json=payload
+    )
+
+    # Check the response status code
+    if response.status_code == 200:
+        # Extract the total token count from the response
+        total_tokens = response.json()["totalTokens"]
+        return total_tokens
+    else:
+        # Handle the error case
+        error_message = f"Error: {response.status_code} - {response.text}"
+        raise Exception(error_message)
+
 def generate_response(prompt, conversation_history):
-    messages = [{"role": "user", "parts": prompt}]
+    messages = [{"role": "user", "parts": [{"text": prompt}]}]
 
     # Count the tokens in the user prompt
     token_count = count_tokens_cached(prompt, len(conversation_history) * 2)
@@ -60,25 +80,84 @@ def generate_response(prompt, conversation_history):
         user_token_count = count_tokens_cached(msg['user_input'], i * 2)
         model_token_count = count_tokens_cached(msg['response'], i * 2 + 1)
 
-        # Update the token count
-        token_count += user_token_count + model_token_count
-
         # Check if adding the user message and model message exceeds the token limit
-        if token_count > 30720:
+        if token_count + user_token_count + model_token_count > 30720:
             break
 
-        user_message = {"role": "user", "parts": msg['user_input']}
-        model_message = {"role": "model", "parts": msg['response']}
+        user_message = {"role": "user", "parts": [{"text": msg['user_input']}]}
+        model_message = {"role": "model", "parts": [{"text": msg['response']}]}
 
-        # Add the user message and model message to the messages list
         messages.insert(0, model_message)
         messages.insert(0, user_message)
 
-    response = model.generate_content(messages, safety_settings=SAFETY_SETTINGS, stream=True)
+        # Update the token count
+        token_count += user_token_count + model_token_count
+
+    # Prepare the request payload for generating content
+    payload = {
+        "contents": messages,
+        "generationConfig": {
+            "temperature": 0.9,
+            "topK": 1,
+            "topP": 1,
+            "maxOutputTokens": 2048,
+            "stopSequences": []
+        },
+        "safetySettings": [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
+            }
+       ]
+    }
+
+    # Make the POST request to the REST API to stream generate content
+    response = requests.post(
+        API_URL.format(model=MODEL, function="streamGenerateContent", key=GOOGLE_API_KEY),
+        headers={"Content-Type": "application/json"},
+        json=payload,
+        stream=True
+    )
 
     def stream_response():
-        for chunk in response:
-            yield chunk.text
+        buffer = ""
+        bracket_count = 0
+        inside_json = False
+
+        for chunk in response.iter_content(chunk_size=None):
+            chunk_str = chunk.decode('utf-8')
+
+            for char in chunk_str:
+
+                if len(buffer) == 0 and char != '{':
+                    continue;
+
+                buffer += char
+
+                if char == '{':
+                    bracket_count += 1
+                    inside_json = True
+                elif char == '}':
+                    bracket_count -= 1
+
+                if inside_json and bracket_count == 0:
+                    data = json.loads("[" + buffer + "]")
+                    text = data[0]["candidates"][0]["content"]["parts"][0]["text"]
+                    yield text
+                    buffer = ""
+                    inside_json = False
 
     return stream_response()
 

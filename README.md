@@ -15,12 +15,12 @@ often have a few of these features, but not all of them together.
 
 # How to use
 
-This requires python and the google-generativeai and flask python libraries. If they are not installed on your machine, you may install them in a virtual environment from a POSIX shell:
+This requires python and the flask and requests python libraries. If they are not installed on your machine, you may install them in a virtual environment from a POSIX shell:
 
 ```
 python -m venv /path/to/venv
 source /path/to/venv/bin/activate
-pip install google-generativeai flask
+pip install flask requests
 ```
 
 Either `export GEMINI_CHAT_API_KEY=YOUR_API_KEY` or
