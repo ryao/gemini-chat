@@ -45,11 +45,7 @@ Future launches would require running `source /path/to/venv/bin/activate` to ent
 
 # Known issues
 
-- Context is limited to 29640 tokens rather than the 30720 that the API
-  promises due to an issue I encountered at 30283 tokens that went away when
-  pruning to 29640. Older versions had been using a token estimation hack to
-  reduce API requests that overpruned to something that was less than 29640
-  in my testing, so this is an improvement.
+- Google sometimes returns 500 errors.
 
 # Future work
 

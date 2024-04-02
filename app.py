@@ -64,7 +64,7 @@ def generate_response(prompt, conversation_history):
         token_count += user_token_count + model_token_count
 
         # Check if adding the user message and model message exceeds the token limit
-        if token_count > 29640:
+        if token_count > 30720:
             break
 
         user_message = {"role": "user", "parts": msg['user_input']}
