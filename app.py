@@ -36,47 +36,34 @@ model = genai.GenerativeModel(MODEL)
 # Conversation history
 conversation_history = []
 
-def count_chars(messages):
-    chars = 0
-    for message in messages:
-        chars += len(message['parts'])
-    return chars
-
-def count_tokens(messages):
-    tokens = 0
-    for message in messages:
-        response = model.count_tokens(message['parts'])
-        tokens += response.total_tokens
-    return tokens
-
 def generate_response(prompt, conversation_history):
-    messages = []
+    messages = [{"role": "user", "parts": prompt}]
 
-    for msg in conversation_history:
-        messages.append({"role": "user", "parts": msg['user_input']})
-        messages.append({"role": "model", "parts": msg['response']})
+    # Count the tokens in the user prompt
+    token_count = model.count_tokens(prompt).total_tokens
 
-    messages.append({"role": "user", "parts": prompt})
+    # Iterate over the reversed conversation history
+    for msg in reversed(conversation_history):
+        # Count the tokens in the user message and model message
+        token_count += model.count_tokens(msg['user_input']).total_tokens
+        token_count += model.count_tokens(msg['response']).total_tokens
 
-    # Check if the token count exceeds the limit via Google's 4 characters per
-    # token estimation. This is to minimize count_tokens() invocations, which
-    # can hit the rate limit.
-    while count_chars(messages) > 30720 * 4:
-        # Remove the oldest user-assistant message pair
-        if len(messages) >= 3:
-            messages.pop(1)  # Remove the oldest user message
-            messages.pop(1)  # Remove the corresponding assistant message
-        else:
+        # Check if adding the user message and model message exceeds the
+        # token limit. This limit should be 30720, but I hit an issue with
+        # only 30283 tokens. A message with 29640 tokens worked. One test
+        # showed that more context is sent with this method, even with the
+        # reduced token count, since we no longer are estimating 4 characters
+        # per token, which caused us in that test to overestimate what was
+        # too much.
+        if token_count > 29640:
             break
 
-    # Check if the token count exceeds the limit
-    while count_tokens(messages) > 30720:
-        # Remove the oldest user-assistant message pair
-        if len(messages) >= 3:
-            messages.pop(1)  # Remove the oldest user message
-            messages.pop(1)  # Remove the corresponding assistant message
-        else:
-            break
+        user_message = {"role": "user", "parts": msg['user_input']}
+        model_message = {"role": "model", "parts": msg['response']}
+
+        # Add the user message and model message to the messages list
+        messages.insert(0, model_message)
+        messages.insert(0, user_message)
 
     response = model.generate_content(messages, safety_settings=SAFETY_SETTINGS, stream=True)
 
