@@ -36,25 +36,34 @@ model = genai.GenerativeModel(MODEL)
 # Conversation history
 conversation_history = []
 
+token_count_cache = {}
+
+def count_tokens_cached(text, index):
+    if index in token_count_cache:
+        return token_count_cache[index]
+    else:
+        token_count = model.count_tokens(text).total_tokens
+        token_count_cache[index] = token_count
+        return token_count
+
 def generate_response(prompt, conversation_history):
     messages = [{"role": "user", "parts": prompt}]
 
     # Count the tokens in the user prompt
-    token_count = model.count_tokens(prompt).total_tokens
+    token_count = count_tokens_cached(prompt, len(conversation_history) * 2)
 
     # Iterate over the reversed conversation history
-    for msg in reversed(conversation_history):
-        # Count the tokens in the user message and model message
-        token_count += model.count_tokens(msg['user_input']).total_tokens
-        token_count += model.count_tokens(msg['response']).total_tokens
+    for i in range(len(conversation_history) - 1, -1, -1):
+        msg = conversation_history[i]
 
-        # Check if adding the user message and model message exceeds the
-        # token limit. This limit should be 30720, but I hit an issue with
-        # only 30283 tokens. A message with 29640 tokens worked. One test
-        # showed that more context is sent with this method, even with the
-        # reduced token count, since we no longer are estimating 4 characters
-        # per token, which caused us in that test to overestimate what was
-        # too much.
+        # Count the tokens in the user message and model message
+        user_token_count = count_tokens_cached(msg['user_input'], i * 2)
+        model_token_count = count_tokens_cached(msg['response'], i * 2 + 1)
+
+        # Update the token count
+        token_count += user_token_count + model_token_count
+
+        # Check if adding the user message and model message exceeds the token limit
         if token_count > 29640:
             break
 
@@ -100,8 +109,15 @@ def edit():
 
     if message_type == 'user_input':
         conversation_history[index]['user_input'] = edited_text
+        # Invalidate the cache entry for the edited prompt
+        if index * 2 in token_count_cache:
+            del token_count_cache[index * 2]
     else:
         conversation_history[index]['response'] = edited_text
+
+    # Invalidate the cache entry for the corresponding response
+    if index * 2 + 1 in token_count_cache:
+        del token_count_cache[index * 2 + 1]
 
     if message_type == 'user_input':
         # Get the conversation history up to but not including the edited prompt
@@ -128,6 +144,12 @@ def edit():
 def delete():
     index = int(request.json['index'])
     conversation_history.pop(index)
+
+    # Update the token count cache indices
+    for i in range(index * 2, len(token_count_cache)):
+        if i in token_count_cache:
+            token_count_cache[i - 2] = token_count_cache.pop(i)
+
     return jsonify({"status": "success"})
 
 @app.route('/dump', methods=['POST'])
@@ -140,6 +162,11 @@ def import_data():
     data = request.json['data']
     global conversation_history
     conversation_history = json.loads(data)
+
+    # Invalidate the token count cache
+    global token_count_cache
+    token_count_cache = {}
+
     return jsonify({"status": "success"})
 
 if __name__ == '__main__':
