@@ -153,27 +153,13 @@
                 messageElement.find('.save-btn, .cancel-btn').hide();
 
                 if (message_type === 'user_input') {
-                    messageElement.find('span').html(edited_text.replace(/\n/g, '<br>'));
-
-                    var responseElement = messageElement.next('.chatbot-response');
-                    var responseParagraph = responseElement.find('span');
-                    responseParagraph.empty(); // Clear the existing response
-
-                    var previousResponse = '';
-
                     $.ajax({
                         url: '/edit',
                         method: 'POST',
                         contentType: 'application/json',
                         data: JSON.stringify({ index: index, edited_text: edited_text, message_type: message_type }),
-                        xhrFields: {
-                            onprogress: function(e) {
-                                var chunk = e.currentTarget.response.substring(previousResponse.length);
-                                previousResponse = e.currentTarget.response;
-                                responseParagraph.append(chunk.replace(/\n/g, '<br>'));
-                            }
-                        },
                         success: function() {
+                            messageElement.find('span').html(edited_text.replace(/\n/g, '<br>'));
                             messageElement.find('.edit-input').remove();
                             messageElement.find('.edit-btn').show();
                             messageElement.find('.delete-btn').show();
