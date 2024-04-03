@@ -69,8 +69,8 @@
                 var responseElement = $('<div class="chatbot-response"></div>');
                 responseElement.append('<span></span>');
                 var responseButtons = $('<div class="message-buttons"></div>');
-                responseButtons.append('<button class="regenerate-btn" data-index="' + newIndex + '" data-message-type="response">Regenerate</button>');
                 responseButtons.append('<button class="edit-btn" data-index="' + newIndex + '" data-message-type="response">Edit</button>');
+                responseButtons.append('<button class="regenerate-btn" data-index="' + newIndex + '" data-message-type="response">Regenerate</button>');
                 responseButtons.append('<button class="save-btn" data-index="' + newIndex + '" data-message-type="response" style="display: none;">Save</button>');
                 responseButtons.append('<button class="cancel-btn" data-index="' + newIndex + '" data-message-type="response" style="display: none;">Cancel</button>');
                 responseElement.append(responseButtons);
@@ -314,8 +314,8 @@
             <div class="chatbot-response">
                 <span>{{ message.response|replace('\n', '<br>')|safe }}</span>
                 <div class="message-buttons">
-                    <button class="regenerate-btn" data-index="{{ loop.index0 }}" data-message-type="response">Regenerate</button>
                     <button class="edit-btn" data-index="{{ loop.index0 }}" data-message-type="response">Edit</button>
+                    <button class="regenerate-btn" data-index="{{ loop.index0 }}" data-message-type="response">Regenerate</button>
                     <button class="save-btn" data-index="{{ loop.index0 }}" data-message-type="response" style="display: none;">Save</button>
                     <button class="cancel-btn" data-index="{{ loop.index0 }}" data-message-type="response" style="display: none;">Cancel</button>
                 </div>
