@@ -72,6 +72,7 @@
                 var responseElement = $('<div class="chatbot-response"></div>');
                 responseElement.append('<span></span>');
                 var responseButtons = $('<div class="message-buttons"></div>');
+                responseButtons.append('<button class="regenerate-btn" data-index="' + newIndex + '" data-message-type="response">Regenerate</button>');
                 responseButtons.append('<button class="edit-btn" data-index="' + newIndex + '" data-message-type="response">Edit</button>');
                 responseButtons.append('<button class="save-btn" data-index="' + newIndex + '" data-message-type="response" style="display: none;">Save</button>');
                 responseButtons.append('<button class="cancel-btn" data-index="' + newIndex + '" data-message-type="response" style="display: none;">Cancel</button>');
@@ -132,6 +133,10 @@
 
                 // Focus on the edit input
                 textarea.focus();
+
+                if (message_type === 'response') {
+                    messageElement.find('.message-buttons').find('.regenerate-btn').hide();
+                }
             });
 
             $(document).on('keydown', '.edit-input', function(event) {
@@ -186,6 +191,7 @@
                         success: function() {
                             messageElement.find('span').html(edited_text.replace(/\n/g, '<br>'));
                             messageElement.find('.edit-input').remove();
+                            messageElement.find('.regenerate-btn').show();
                             messageElement.find('.edit-btn').show();
                         }
                     });
@@ -198,6 +204,31 @@
                 messageElement.find('span').html(originalText);
                 messageElement.find('.message-buttons').find('.edit-btn, .delete-btn').show();
                 messageElement.find('.message-buttons').find('.save-btn, .cancel-btn').hide();
+                messageElement.find('.regenerate-btn').show();
+            });
+
+            // Regenerate button click event handler
+                $(document).on('click', '.regenerate-btn', function() {
+                var index = $(this).data('index');
+                var messageElement = $(this).closest('.chatbot-response');
+                var responseParagraph = messageElement.find('span');
+                responseParagraph.empty(); // Clear the existing response
+
+                var previousResponse = '';
+
+                $.ajax({
+                    url: '/regenerate',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ index: index }),
+                    xhrFields: {
+                        onprogress: function(e) {
+                            var chunk = e.currentTarget.response.substring(previousResponse.length);
+                            previousResponse = e.currentTarget.response;
+                            responseParagraph.append(chunk.replace(/\n/g, '<br>'));
+                        }
+                    }
+                });
             });
 
             // Delete functionality
@@ -300,6 +331,7 @@
             <div class="chatbot-response">
                 <span>{{ message.response|replace('\n', '<br>')|safe }}</span>
                 <div class="message-buttons">
+                    <button class="regenerate-btn" data-index="{{ loop.index0 }}" data-message-type="response">Regenerate</button>
                     <button class="edit-btn" data-index="{{ loop.index0 }}" data-message-type="response">Edit</button>
                     <button class="save-btn" data-index="{{ loop.index0 }}" data-message-type="response" style="display: none;">Save</button>
                     <button class="cancel-btn" data-index="{{ loop.index0 }}" data-message-type="response" style="display: none;">Cancel</button>

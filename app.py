@@ -140,6 +140,31 @@ def edit():
 
     return jsonify({"status": "success"})
 
+@app.route('/regenerate', methods=['POST'])
+def regenerate():
+    index = int(request.json['index'])
+    conversation_history_subset = conversation_history[:index]
+    prompt = conversation_history[index]['user_input']
+    response_stream = generate_response(prompt, conversation_history_subset)
+
+    # Invalidate the cache entry for the corresponding response
+    if index * 2 + 1 in token_count_cache:
+        del token_count_cache[index * 2 + 1]
+
+    def generate(index):
+        try:
+            s = ''
+            for chunk in response_stream:
+                s += chunk
+                yield chunk
+            conversation_history[index]['response'] = s.strip()
+        except BlockedPromptException as e:
+            error_message = "The content was blocked for reason: OTHER"
+            yield error_message
+            conversation_history[index]['response'] = error_message
+
+    return app.response_class(generate(index), mimetype='text/event-stream')
+
 @app.route('/delete', methods=['POST'])
 def delete():
     index = int(request.json['index'])
