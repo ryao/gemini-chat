@@ -115,28 +115,9 @@ def edit():
     else:
         conversation_history[index]['response'] = edited_text
 
-    # Invalidate the cache entry for the corresponding response
-    if index * 2 + 1 in token_count_cache:
-        del token_count_cache[index * 2 + 1]
-
-    if message_type == 'user_input':
-        # Get the conversation history up to but not including the edited prompt
-        conversation_history_subset = conversation_history[:index]
-        response_stream = generate_response(edited_text, conversation_history_subset)
-
-        def generate(index):
-            try:
-                s = ''
-                for chunk in response_stream:
-                    s += chunk
-                    yield chunk
-                conversation_history[index]['response'] = s.strip()
-            except BlockedPromptException as e:
-                error_message = "The content was blocked for reason: OTHER"
-                yield error_message
-                conversation_history[index]['response'] = error_message
-
-        return app.response_class(generate(index), mimetype='text/event-stream')
+        # Invalidate the cache entry for the edited response
+        if index * 2 + 1 in token_count_cache:
+            del token_count_cache[index * 2 + 1]
 
     return jsonify({"status": "success"})
 
