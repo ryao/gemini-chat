@@ -135,6 +135,7 @@ def generate_response(prompt, conversation_history):
         buffer = ""
         bracket_count = 0
         inside_json = False
+        escape_next = False
 
         for chunk in response.iter_content(chunk_size=None):
             chunk_str = chunk.decode('utf-8')
@@ -142,7 +143,17 @@ def generate_response(prompt, conversation_history):
             for char in chunk_str:
 
                 if len(buffer) == 0 and char != '{':
-                    continue;
+                    continue
+
+                if char == '\\' and not escape_next:
+                    escape_next = True
+                    buffer += char
+                    continue
+
+                if escape_next:
+                    escape_next = False
+                    buffer += char
+                    continue
 
                 buffer += char
 
