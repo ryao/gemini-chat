@@ -111,12 +111,15 @@
             });
 
             // Edit functionality
-               $(document).on('click', '.edit-btn', function() {
+            $(document).on('click', '.edit-btn', function() {
                 var index = $(this).data('index');
                 var message_type = $(this).data('message-type');
                 var messageElement = $(this).closest('.user-input, .chatbot-response');
                 var message = messageElement.find('span');
                 var original_text = message.html().replace(/<br>/g, '\n');
+
+                // Store the original text as an HTML attribute
+                message.attr('data-original-text', message.html());
 
                 message.html('<textarea class="edit-input">' + original_text + '</textarea>');
 
@@ -183,8 +186,10 @@
 
             $(document).on('click', '.cancel-btn', function() {
                 var messageElement = $(this).closest('.user-input, .chatbot-response');
-                var originalText = messageElement.find('.edit-input').val().replace(/\n/g, '<br>');
+                var originalText = messageElement.find('span').attr('data-original-text');
                 messageElement.find('span').html(originalText);
+                messageElement.find('span').removeAttr('data-original-text');
+                messageElement.find('.edit-input').remove();
                 messageElement.find('.message-buttons').find('.edit-btn, .delete-btn').show();
                 messageElement.find('.message-buttons').find('.save-btn, .cancel-btn').hide();
                 messageElement.find('.regenerate-btn').show();
