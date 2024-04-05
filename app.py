@@ -3,6 +3,7 @@ from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 import json
 import google.generativeai as genai
+import requests
 
 app = Flask(__name__)
 
@@ -40,39 +41,58 @@ token_count_cache = {}
 
 def count_tokens_cached(text, index):
     if index in token_count_cache:
-        return token_count_cache[index]
+        return token_count_cache[index], True
     else:
         token_count = model.count_tokens(text).total_tokens
         token_count_cache[index] = token_count
-        return token_count
+        return token_count, False
+
+def count_tokens_rest_api(messages):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:countTokens?key={GOOGLE_API_KEY}"
+    headers = {'Content-Type': 'application/json'}
+    data = {'contents': [{'parts': [{'text': msg['parts'][0]} for msg in messages]}]}
+    response = requests.post(url, headers=headers, json=data)
+    return response.json()['totalTokens']
 
 def generate_response(prompt, conversation_history):
-    messages = [{"role": "user", "parts": prompt}]
+    messages = [{"role": "user", "parts": [prompt]}]
+    token_count = count_tokens_cached(prompt, len(conversation_history) * 2)[0]
+    cache_misses = 0
 
-    # Count the tokens in the user prompt
-    token_count = count_tokens_cached(prompt, len(conversation_history) * 2)
-
-    # Iterate over the reversed conversation history
     for i in range(len(conversation_history) - 1, -1, -1):
         msg = conversation_history[i]
 
-        # Count the tokens in the user message and model message
-        user_token_count = count_tokens_cached(msg['user_input'], i * 2)
-        model_token_count = count_tokens_cached(msg['response'], i * 2 + 1)
+        if cache_misses < 20:
+            user_token_count, user_cache_hit = count_tokens_cached(msg['user_input'], i * 2)
+            model_token_count, model_cache_hit = count_tokens_cached(msg['response'], i * 2 + 1)
 
-        # Update the token count
-        token_count += user_token_count + model_token_count
+            if not user_cache_hit:
+                cache_misses += 1
+            if not model_cache_hit:
+                cache_misses += 1
 
-        # Check if adding the user message and model message exceeds the token limit
-        if token_count > 30720:
-            break
+            token_count += user_token_count + model_token_count
 
-        user_message = {"role": "user", "parts": msg['user_input']}
-        model_message = {"role": "model", "parts": msg['response']}
+            if token_count > 30720:
+                break
 
-        # Add the user message and model message to the messages list
+        user_message = {"role": "user", "parts": [msg['user_input']]}
+        model_message = {"role": "model", "parts": [msg['response']]}
         messages.insert(0, model_message)
         messages.insert(0, user_message)
+
+    if cache_misses >= 20:
+        left = 0
+        right = len(conversation_history) // 2
+        while left < right:
+            mid = (left + right) // 2
+            pruned_messages = messages[mid * 2:]
+            token_count = count_tokens_rest_api(pruned_messages)
+            if token_count <= 30720:
+                right = mid
+            else:
+                left = mid + 1
+        messages = messages[left * 2:]
 
     response = model.generate_content(messages, safety_settings=SAFETY_SETTINGS, stream=True)
 
