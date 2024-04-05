@@ -31,6 +31,12 @@ token_count_cache = {}
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:{function}?key={key}"
 
+def count_chars(messages):
+    chars = 0
+    for message in messages:
+        chars += len(message['parts'][0]['text'])
+    return chars
+
 def count_tokens_cached(text, index):
     if index in token_count_cache:
         return token_count_cache[index], True
@@ -80,7 +86,11 @@ def count_tokens_multiple(messages):
 # count from a cache. If this can be done with less than 20 uncached API
 # requests, we are done and simply do not add more context than our 30720 token
 # space permits. However if we exceed 20, we then must use another algorithm.
-# At this point, we binary search to find the correct amount of context.
+# We first use the 4 characters per token approximation to limit the context to
+# 40,000 tokens. We then do a binary search to determine the correct amount of
+# context to send. The initial limitation to approximately 48,000 tokens is to
+# avoid sending too much context to the token counting algorithm at Google,
+# which might one day return an error if we send too much.
 def generate_response(prompt, conversation_history):
     messages = [{"role": "user", "parts": [{"text": prompt}]}]
     token_count = count_tokens_cached(prompt, len(conversation_history) * 2)[0]
@@ -109,6 +119,14 @@ def generate_response(prompt, conversation_history):
         messages.insert(0, user_message)
 
     if cache_misses >= 20:
+        while count_chars(messages) > 48000 * 4:
+            # Remove the oldest user-assistant message pair
+            if len(messages) >= 3:
+                messages.pop(1)  # Remove the oldest user message
+                messages.pop(1)  # Remove the corresponding assistant message
+            else:
+                break
+
         left = 0
         right = len(messages) // 2
         while left < right:
