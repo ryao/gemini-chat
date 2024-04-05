@@ -48,6 +48,7 @@
             $('#chat-form').submit(function(event) {
                 event.preventDefault();
                 var user_input = $('#user-input').val();
+                var model = $('#model-select').val();
                 var chatForm = $(this);
 
                 // Get the last edit button before the chat form
@@ -92,7 +93,7 @@
                     url: '/chat',
                     method: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify({ user_input: user_input }),
+                    data: JSON.stringify({ user_input: user_input, model: model }),
                     xhrFields: {
                         onprogress: function(e) {
                             var chunk = e.currentTarget.response;
@@ -196,8 +197,9 @@
             });
 
             // Regenerate button click event handler
-                $(document).on('click', '.regenerate-btn', function() {
+            $(document).on('click', '.regenerate-btn', function() {
                 var index = $(this).data('index');
+                var model = $('#model-select').val();
                 var messageElement = $(this).closest('.chatbot-response');
                 var responseParagraph = messageElement.find('span');
                 responseParagraph.empty(); // Clear the existing response
@@ -208,7 +210,7 @@
                     url: '/regenerate',
                     method: 'POST',
                     contentType: 'application/json',
-                    data: JSON.stringify({ index: index }),
+                    data: JSON.stringify({ index: index, model: model }),
                     xhrFields: {
                         onprogress: function(e) {
                             var chunk = e.currentTarget.response.substring(previousResponse.length);
@@ -332,6 +334,12 @@
         </form>
         <button id="dump-btn">Dump Conversation</button>
         <button id="import-btn">Import Conversation</button>
+        <select id="model-select">
+        <option value="anthropic/claude-3-haiku:beta">anthropic/claude-3-haiku:beta</option>
+        <option value="databricks/dbrx-instruct">databricks/dbrx-instruct</option>
+        <option value="perplexity/sonar-medium-chat">perplexity/sonar-medium-chat</option>
+        <option value="openchat/openchat-7b:free">openchat/openchat-7b:free</option>
+</select>
     </div>
 </body>
 </html>

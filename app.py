@@ -12,7 +12,7 @@ API_KEY = os.environ.get('OPENROUTER_API_KEY')
 # Conversation history
 conversation_history = []
 
-def generate_response(prompt, conversation_history):
+def generate_response(prompt, conversation_history, model):
     messages = [{"role": "user", "content": prompt}]
 
     for msg in reversed(conversation_history):
@@ -23,9 +23,15 @@ def generate_response(prompt, conversation_history):
 
     # Prepare the request payload for generating content
     payload = {
-        "model": "openchat/openchat-7b:free",
+        "model": model,
         "messages": messages,
-        "stream":True
+        "stream":True,
+        "top_p": 1,
+        "temperature": 1,
+        "frequency_penalty": 1,
+        "presence_penalty": 1,
+        "repetition_penalty": 1,
+        "top_k": 0,
     }
 
     # Make the POST request to the OpenRouter.ai API to generate content
@@ -86,7 +92,8 @@ def home():
 @app.route('/chat', methods=['POST'])
 def chat():
     user_input = request.json['user_input']
-    response_stream = generate_response(user_input, conversation_history)
+    model = request.json['model']
+    response_stream = generate_response(user_input, conversation_history, model)
 
     def generate(user_input):
         s = ''
@@ -114,9 +121,10 @@ def edit():
 @app.route('/regenerate', methods=['POST'])
 def regenerate():
     index = int(request.json['index'])
+    model = request.json['model']
     conversation_history_subset = conversation_history[:index]
     prompt = conversation_history[index]['user_input']
-    response_stream = generate_response(prompt, conversation_history_subset)
+    response_stream = generate_response(prompt, conversation_history_subset, model)
 
     def generate(index):
         s = ''
