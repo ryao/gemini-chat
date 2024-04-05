@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 import json
-import google.generativeai as genai
 import requests
 
 app = Flask(__name__)
@@ -24,38 +23,66 @@ if GOOGLE_API_KEY is None:
 
 # Set the model and safety settings
 MODEL = 'gemini-1.0-pro-latest'
-SAFETY_SETTINGS = {
-    'HARASSMENT': 'block_none',
-    'HATE_SPEECH': 'block_none',
-    'DANGEROUS': 'block_none',
-    'SEXUAL': 'block_none'
-}
-
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel(MODEL)
 
 # Conversation history
 conversation_history = []
 
 token_count_cache = {}
 
+API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:{function}?key={key}"
+
 def count_tokens_cached(text, index):
     if index in token_count_cache:
         return token_count_cache[index], True
     else:
-        token_count = model.count_tokens(text).total_tokens
+        token_count = count_tokens(text)
         token_count_cache[index] = token_count
         return token_count, False
 
-def count_tokens_rest_api(messages):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:countTokens?key={GOOGLE_API_KEY}"
+def count_tokens(text):
+    # Prepare the request payload for counting tokens
+    payload = {
+        "contents": [{
+            "parts": [{
+                "text": text
+            }]
+        }]
+    }
+
+    # Make a POST request to the REST API to count tokens
+    response = requests.post(
+        API_URL.format(model=MODEL, function="countTokens", key=GOOGLE_API_KEY),
+        headers={"Content-Type": "application/json"},
+        json=payload
+    )
+
+    # Check the response status code
+    if response.status_code == 200:
+        # Extract the total token count from the response
+        total_tokens = response.json()["totalTokens"]
+        return total_tokens
+    else:
+        # Handle the error case
+        error_message = f"Error: {response.status_code} - {response.text}"
+        raise Exception(error_message)
+
+def count_tokens_multiple(messages):
+
+    url = API_URL.format(model=MODEL, function="countTokens", key=GOOGLE_API_KEY)
     headers = {'Content-Type': 'application/json'}
-    data = {'contents': [{'parts': [{'text': msg['parts'][0]} for msg in messages]}]}
+    data = {'contents': [{'parts': [{'text': msg['parts'][0]['text']} for msg in messages]}]}
     response = requests.post(url, headers=headers, json=data)
     return response.json()['totalTokens']
 
+# We have a fairly elaborate pruning algorithm that is intended to avoid
+# sending more tokens to the model than the model supports, while preventing us
+# from hitting API rate limits. It works by first doing a linear backward token
+# count from a cache. If this can be done with less than 20 uncached API
+# requests, we are done and simply do not add more context than our 30720 token
+# space permits. However if we exceed 20, we then must use another algorithm.
+# At this point, we binary search to find the correct amount of context.
 def generate_response(prompt, conversation_history):
-    messages = [{"role": "user", "parts": [prompt]}]
+    messages = [{"role": "user", "parts": [{"text": prompt}]}]
     token_count = count_tokens_cached(prompt, len(conversation_history) * 2)[0]
     cache_misses = 0
 
@@ -76,29 +103,99 @@ def generate_response(prompt, conversation_history):
             if token_count > 30720:
                 break
 
-        user_message = {"role": "user", "parts": [msg['user_input']]}
-        model_message = {"role": "model", "parts": [msg['response']]}
+        user_message = {"role": "user", "parts": [{"text": msg['user_input']}]}
+        model_message = {"role": "model", "parts": [{"text": msg['response']}]}
         messages.insert(0, model_message)
         messages.insert(0, user_message)
 
     if cache_misses >= 20:
         left = 0
-        right = len(conversation_history) // 2
+        right = len(messages) // 2
         while left < right:
             mid = (left + right) // 2
             pruned_messages = messages[mid * 2:]
-            token_count = count_tokens_rest_api(pruned_messages)
+            token_count = count_tokens_multiple(pruned_messages)
             if token_count <= 30720:
                 right = mid
             else:
                 left = mid + 1
         messages = messages[left * 2:]
 
-    response = model.generate_content(messages, safety_settings=SAFETY_SETTINGS, stream=True)
+    # Prepare the request payload for generating content
+    payload = {
+        "contents": messages,
+        "generationConfig": {
+            "temperature": 0.9,
+            "topK": 1,
+            "topP": 1,
+            "maxOutputTokens": 2048,
+            "stopSequences": []
+        },
+        "safetySettings": [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
+            }
+       ]
+    }
+
+    # Make the POST request to the REST API to stream generate content
+    response = requests.post(
+        API_URL.format(model=MODEL, function="streamGenerateContent", key=GOOGLE_API_KEY),
+        headers={"Content-Type": "application/json"},
+        json=payload,
+        stream=True
+    )
 
     def stream_response():
-        for chunk in response:
-            yield chunk.text
+        buffer = ""
+        bracket_count = 0
+        inside_json = False
+        escape_next = False
+
+        for chunk in response.iter_content(chunk_size=None):
+            chunk_str = chunk.decode('utf-8')
+
+            for char in chunk_str:
+                if len(buffer) == 0 and char != '{':
+                    continue
+
+                if char == '\\' and not escape_next:
+                    escape_next = True
+                    buffer += char
+                    continue
+
+                if escape_next:
+                    escape_next = False
+                    buffer += char
+                    continue
+
+                buffer += char
+
+                if char == '{':
+                    bracket_count += 1
+                    inside_json = True
+                elif char == '}':
+                    bracket_count -= 1
+
+                if inside_json and bracket_count == 0:
+                    data = json.loads("[" + buffer + "]")
+                    text = data[0]["candidates"][0]["content"]["parts"][0]["text"]
+                    yield text
+                    buffer = ""
+                    inside_json = False
 
     return stream_response()
 
