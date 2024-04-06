@@ -146,6 +146,14 @@
                 }
             });
 
+            $(document).on('keydown', '.edit-input', function(event) {
+                if (event.key === 'Escape') {
+                    event.preventDefault(); // Prevent the default behavior of the Escape key
+                    var cancelBtn = $(this).closest('.user-input, .chatbot-response').find('.cancel-btn');
+                    cancelBtn.click(); // Trigger a click event on the cancel button
+                }
+            });
+
             $(document).on('click', '.save-btn', function() {
                 var index = $(this).data('index');
                 var message_type = $(this).data('message-type');
