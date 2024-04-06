@@ -241,7 +241,7 @@
                             // Renumber the data indices of the remaining elements
                             $('.user-input, .chatbot-response').each(function(i) {
                                 var newIndex = Math.floor(i / 2);
-                                $(this).find('.edit-btn, .save-btn, .cancel-btn, .delete-btn').attr('data-index', newIndex);
+                                $(this).find('.edit-btn, .save-btn, .cancel-btn, .delete-btn, .regenerate-btn').attr('data-index', newIndex);
                             });
                         }
                     },
