@@ -44,6 +44,12 @@
         }
     </style>
     <script>
+        function escapeHtml(text) {
+            return text.replace(/&/g, '&amp;')
+                       .replace(/</g, '&lt;')
+                       .replace(/>/g, '&gt;');
+        }
+
         $(document).ready(function() {
             $('#chat-form').submit(function(event) {
                 event.preventDefault();
@@ -57,7 +63,7 @@
 
                 // Create user input element
                 var userInputElement = $('<div class="user-input"></div>');
-                userInputElement.append('<span>' + user_input.replace(/\n/g, '<br>') + '</span>');
+		userInputElement.append('<span>' + escapeHtml(user_input).replace(/\n/g, '<br>') + '</span>');
                 var userInputButtons = $('<div class="message-buttons"></div>');
                 userInputButtons.append('<button class="edit-btn" data-index="' + newIndex + '" data-message-type="user_input">Edit</button>');
                 userInputButtons.append('<button class="save-btn" data-index="' + newIndex + '" data-message-type="user_input" style="display: none;">Save</button>');
@@ -101,7 +107,7 @@
                             var newContent = chunk.substring(previousResponse.length);
 
                             // Append only the new content to the response paragraph
-                            responseParagraph.append(newContent.replace(/\n/g, '<br>'));
+			    responseParagraph.append(escapeHtml(newContent).replace(/\n/g, '<br>'));
 
                             // Update the previous response
                             previousResponse = chunk;
@@ -162,7 +168,7 @@
                         contentType: 'application/json',
                         data: JSON.stringify({ index: index, edited_text: edited_text, message_type: message_type }),
                         success: function() {
-                            messageElement.find('span').html(edited_text.replace(/\n/g, '<br>'));
+                            messageElement.find('span').html(escapeHtml(edited_text).replace(/\n/g, '<br>'));
                             messageElement.find('.edit-input').remove();
                             messageElement.find('.edit-btn').show();
                             messageElement.find('.delete-btn').show();
@@ -175,7 +181,7 @@
                         contentType: 'application/json',
                         data: JSON.stringify({ index: index, edited_text: edited_text, message_type: message_type }),
                         success: function() {
-                            messageElement.find('span').html(edited_text.replace(/\n/g, '<br>'));
+                            messageElement.find('span').html(escapeHtml(edited_text).replace(/\n/g, '<br>'));
                             messageElement.find('.edit-input').remove();
                             messageElement.find('.regenerate-btn').show();
                             messageElement.find('.edit-btn').show();
@@ -308,7 +314,7 @@
         <h1>Chatbot</h1>
 	{% for message in conversation_history %}
             <div class="user-input">
-                <span>{{ message.user_input|replace('\n', '<br>')|safe }}</span>
+                <span>{{ message.user_input|replace('&', '&amp;')|replace('<', '&lt;')|replace('>', '&gt;')|replace('\n', '<br>')|safe }}</span>
                 <div class="message-buttons">
                     <button class="edit-btn" data-index="{{ loop.index0 }}" data-message-type="user_input">Edit</button>
                     <button class="save-btn" data-index="{{ loop.index0 }}" data-message-type="user_input" style="display: none;">Save</button>
@@ -317,7 +323,7 @@
                 </div>
             </div>
             <div class="chatbot-response">
-                <span>{{ message.response|replace('\n', '<br>')|safe }}</span>
+                <span>{{ message.response|replace('&', '&amp;')|replace('<', '&lt;')|replace('>', '&gt;')|replace('\n', '<br>')|safe }}</span>
                 <div class="message-buttons">
                     <button class="edit-btn" data-index="{{ loop.index0 }}" data-message-type="response">Edit</button>
                     <button class="regenerate-btn" data-index="{{ loop.index0 }}" data-message-type="response">Regenerate</button>
