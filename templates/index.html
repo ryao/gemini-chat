@@ -95,6 +95,9 @@
                 // Clear the user input field
                 $('#user-input').val('');
 
+                userInputButtons.find('.edit-btn, .delete-btn').hide();
+                responseButtons.find('.edit-btn, .regenerate-btn').hide();
+
                 $.ajax({
                     url: '/chat',
                     method: 'POST',
@@ -113,6 +116,10 @@
                             // Update the previous response
                             previousResponse = chunk;
                         }
+                    },
+                    success: function() {
+                        userInputButtons.find('.edit-btn, .delete-btn').show();
+                        responseButtons.find('.edit-btn, .regenerate-btn').show();
                     }
                 });
             });
@@ -212,6 +219,8 @@
 
                 var previousResponse = '';
 
+                messageElement.find('.edit-btn, .regenerate-btn').hide();
+
                 $.ajax({
                     url: '/regenerate',
                     method: 'POST',
@@ -223,6 +232,9 @@
                             previousResponse = e.currentTarget.response;
                             responseParagraph.append(chunk.replace(/\n/g, '<br>'));
                         }
+                    },
+                    success: function() {
+                            messageElement.find('.edit-btn, .regenerate-btn').show();
                     }
                 });
             });
