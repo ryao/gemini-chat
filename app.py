@@ -6,8 +6,8 @@ import requests
 app = Flask(__name__)
 
 # OpenRouter.ai API URL and API key
-API_URL = "https://openrouter.ai/api/v1/chat/completions"
-API_KEY = os.environ.get('OPENROUTER_API_KEY')
+API_URL = "https://api.groq.com/openai/v1/chat/completions"
+API_KEY = os.environ.get('GROQ_API_KEY')
 
 # Conversation history
 conversation_history = []
@@ -30,8 +30,6 @@ def generate_response(prompt, conversation_history, model):
         "temperature": 1,
         "frequency_penalty": 1,
         "presence_penalty": 1,
-        "repetition_penalty": 1,
-        "top_k": 0,
     }
 
     # Make the POST request to the OpenRouter.ai API to generate content
@@ -85,8 +83,12 @@ def generate_response(prompt, conversation_history, model):
                     bracket_count -= 1
 
                 if inside_json and bracket_count == 0:
-                    data = json.loads("[" + buffer + "]")
-                    text = data[0]["choices"][0]["delta"]["content"]
+                    data = json.loads(buffer)
+                    print (data)
+                    if 'content' in data["choices"][0]["delta"]:
+                        text = data["choices"][0]["delta"]["content"]
+                    else:
+                        text = ''
                     yield text
                     buffer = ""
                     inside_json = False
