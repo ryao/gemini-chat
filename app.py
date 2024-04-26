@@ -49,6 +49,7 @@ def generate_response(prompt, conversation_history, model):
         bracket_count = 0
         inside_json = False
         escape_next = False
+        inside_string = False
 
         for chunk in response.iter_content(chunk_size=None):
             chunk_str = chunk.decode('utf-8')
@@ -65,6 +66,13 @@ def generate_response(prompt, conversation_history, model):
 
                 if escape_next:
                     escape_next = False
+                    buffer += char
+                    continue
+
+                if char == '"':
+                    inside_string = not inside_string
+
+                if inside_string:
                     buffer += char
                     continue
 
