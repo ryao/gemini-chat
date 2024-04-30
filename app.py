@@ -3,6 +3,8 @@ from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 import json
 import requests
+import pickle
+import atexit
 
 app = Flask(__name__)
 
@@ -28,6 +30,25 @@ MODEL = 'gemini-1.0-pro-latest'
 conversation_history = []
 
 token_count_cache = {}
+
+# Temporary file name
+TEMP_FILE_NAME = f'/tmp/gemini-chat.json'
+
+def save_conversation_history():
+    with open(TEMP_FILE_NAME, 'wb') as temp_file:
+        pickle.dump(conversation_history, temp_file)
+
+def load_conversation_history():
+    global conversation_history
+    if os.path.exists(TEMP_FILE_NAME):
+        with open(TEMP_FILE_NAME, 'rb') as temp_file:
+            conversation_history = pickle.load(temp_file)
+
+def save_and_exit():
+    save_conversation_history()
+
+atexit.register(save_and_exit)
+load_conversation_history()
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:{function}?key={key}"
 
