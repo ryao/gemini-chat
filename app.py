@@ -36,7 +36,7 @@ TEMP_FILE_NAME = f'/tmp/gemini-chat.json'
 
 def save_conversation_history():
     with open(TEMP_FILE_NAME, 'wb') as temp_file:
-        pickle.dump(conversation_history, temp_file)
+        pickle.dump(conversation_history, temp_file, protocol=2)
 
 def load_conversation_history():
     global conversation_history
