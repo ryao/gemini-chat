@@ -3,6 +3,7 @@
 <head>
     <title>Chatbot</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked@14.1.3/marked.min.js" integrity="sha384-k8o8HikHweyzW55Wd3wl18ovJj6vHVYNQeQbeSM0fxx+0WiH4TcccOG9uz8Xd2JR" crossorigin="anonymous"></script>
     <style>
         .chatbox {
             max-width: 600px;
@@ -50,7 +51,18 @@
                        .replace(/>/g, '&gt;');
         }
 
+        function renderMarkdown(text) {
+            return marked.parse(text);
+        }
+
         $(document).ready(function() {
+            $('.chatbot-response span').each(function() {
+		var originalText = $(this).attr('data-original-text');
+                if (originalText) {
+                    $(this).html(renderMarkdown(originalText));
+                }
+            });
+
             $('#chat-form').submit(function(event) {
                 event.preventDefault();
                 var user_input = $('#user-input').val();
@@ -64,7 +76,8 @@
 
                 // Create user input element
                 var userInputElement = $('<div class="user-input"></div>');
-		userInputElement.append('<span>' + escapeHtml(user_input).replace(/\n/g, '<br>') + '</span>');
+		userInputElement.append('<span>' + renderMarkdown(user_input) + '</span>');
+		userInputElement.find('span').attr('data-original-text', user_input);
                 var userInputButtons = $('<div class="message-buttons"></div>');
                 userInputButtons.append('<button class="edit-btn" data-index="' + newIndex + '" data-message-type="user_input">Edit</button>');
                 userInputButtons.append('<button class="save-btn" data-index="' + newIndex + '" data-message-type="user_input" style="display: none;">Save</button>');
@@ -112,12 +125,15 @@
 
                             // Append only the new content to the response paragraph
 			    responseParagraph.append(escapeHtml(newContent).replace(/\n/g, '<br>'));
+			    responseParagraph.attr('data-original-text', chunk);
+
 
                             // Update the previous response
                             previousResponse = chunk;
                         }
                     },
                     success: function() {
+		        responseParagraph.html(renderMarkdown(responseParagraph.attr('data-original-text')));
                         userInputButtons.find('.edit-btn, .delete-btn').show();
                         responseButtons.find('.edit-btn, .regenerate-btn').show();
                     }
@@ -130,10 +146,7 @@
                 var message_type = $(this).data('message-type');
                 var messageElement = $(this).closest('.user-input, .chatbot-response');
                 var message = messageElement.find('span');
-                var original_text = message.html().replace(/<br>/g, '\n');
-
-                // Store the original text as an HTML attribute
-                message.attr('data-original-text', message.html());
+		var original_text = message.attr('data-original-text');
 
                 message.html('<textarea class="edit-input">' + original_text + '</textarea>');
 
@@ -184,7 +197,8 @@
                         contentType: 'application/json',
                         data: JSON.stringify({ index: index, edited_text: edited_text, message_type: message_type }),
                         success: function() {
-                            messageElement.find('span').html(escapeHtml(edited_text).replace(/\n/g, '<br>'));
+                            messageElement.find('span').html(renderMarkdown(edited_text));
+                            messageElement.find('span').attr('data-original-text', edited_text);;
                             messageElement.find('.edit-input').remove();
                             messageElement.find('.edit-btn').show();
                             messageElement.find('.delete-btn').show();
@@ -197,7 +211,8 @@
                         contentType: 'application/json',
                         data: JSON.stringify({ index: index, edited_text: edited_text, message_type: message_type }),
                         success: function() {
-                            messageElement.find('span').html(escapeHtml(edited_text).replace(/\n/g, '<br>'));
+                            messageElement.find('span').html(renderMarkdown(edited_text));
+                            messageElement.find('span').attr('data-original-text', edited_text);;
                             messageElement.find('.edit-input').remove();
                             messageElement.find('.regenerate-btn').show();
                             messageElement.find('.edit-btn').show();
@@ -209,8 +224,7 @@
             $(document).on('click', '.cancel-btn', function() {
                 var messageElement = $(this).closest('.user-input, .chatbot-response');
                 var originalText = messageElement.find('span').attr('data-original-text');
-                messageElement.find('span').html(originalText);
-                messageElement.find('span').removeAttr('data-original-text');
+                messageElement.find('span').html(renderMarkdown(originalText.replace(/\n/g, '<br>')));
                 messageElement.find('.edit-input').remove();
                 messageElement.find('.message-buttons').find('.edit-btn, .delete-btn').show();
                 messageElement.find('.message-buttons').find('.save-btn, .cancel-btn').hide();
@@ -236,14 +250,18 @@
                     data: JSON.stringify({ index: index, model: model }),
                     xhrFields: {
                         onprogress: function(e) {
-                            var chunk = e.currentTarget.response.substring(previousResponse.length);
-                            previousResponse = e.currentTarget.response;
-                            responseParagraph.append(chunk.replace(/\n/g, '<br>'));
+                            var chunk = e.currentTarget.response;
+                            var newContent = chunk.substring(previousResponse.length);
+                            previousResponse = chunk;
+			    responseParagraph.attr('data-original-text', chunk);
+                            responseParagraph.append(escapeHtml(newContent).replace(/\n/g, '<br>'));
                         }
                     },
                     success: function() {
+		            responseParagraph.html(renderMarkdown(responseParagraph.attr('data-original-text')));
                             messageElement.find('.edit-btn, .regenerate-btn').show();
                     }
+
                 });
             });
 
@@ -336,7 +354,7 @@
         <h1>Chatbot</h1>
 	{% for message in conversation_history %}
             <div class="user-input">
-                <span>{{ message.user_input|replace('&', '&amp;')|replace('<', '&lt;')|replace('>', '&gt;')|replace('\n', '<br>')|safe }}</span>
+                <span data-original-text="{{ message.user_input }}">{{ message.user_input|replace('&', '&amp;')|replace('<', '&lt;')|replace('>', '&gt;')|replace('\n', '<br>')|safe }}</span>
                 <div class="message-buttons">
                     <button class="edit-btn" data-index="{{ loop.index0 }}" data-message-type="user_input">Edit</button>
                     <button class="save-btn" data-index="{{ loop.index0 }}" data-message-type="user_input" style="display: none;">Save</button>
@@ -345,7 +363,7 @@
                 </div>
             </div>
             <div class="chatbot-response">
-                <span>{{ message.response|replace('&', '&amp;')|replace('<', '&lt;')|replace('>', '&gt;')|replace('\n', '<br>')|safe }}</span>
+                <span data-original-text="{{ message.response }}">{{ message.response|replace('&', '&amp;')|replace('<', '&lt;')|replace('>', '&gt;')|replace('\n', '<br>')|safe }}</span>
                 <div class="message-buttons">
                     <button class="edit-btn" data-index="{{ loop.index0 }}" data-message-type="response">Edit</button>
                     <button class="regenerate-btn" data-index="{{ loop.index0 }}" data-message-type="response">Regenerate</button>
