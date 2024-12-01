@@ -29,69 +29,17 @@ conversation_history = []
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:{function}?key={key}"
 
-token_count_cache = {}
-
-def count_tokens_cached(text, index):
-    if index in token_count_cache:
-        return token_count_cache[index]
-    else:
-        token_count = count_tokens(text)
-        token_count_cache[index] = token_count
-        return token_count
-
-def count_tokens(text):
-    # Prepare the request payload for counting tokens
-    payload = {
-        "contents": [{
-            "parts": [{
-                "text": text
-            }]
-        }]
-    }
-
-    # Make a POST request to the REST API to count tokens
-    response = requests.post(
-        API_URL.format(model=MODEL, function="countTokens", key=GOOGLE_API_KEY),
-        headers={"Content-Type": "application/json"},
-        json=payload
-    )
-
-    # Check the response status code
-    if response.status_code == 200:
-        # Extract the total token count from the response
-        total_tokens = response.json()["totalTokens"]
-        return total_tokens
-    else:
-        # Handle the error case
-        error_message = f"Error: {response.status_code} - {response.text}"
-        raise Exception(error_message)
 
 def generate_response(prompt, conversation_history):
     messages = [{"role": "user", "parts": [{"text": prompt}]}]
 
-    # Count the tokens in the user prompt
-    token_count = count_tokens_cached(prompt, len(conversation_history) * 2)
-
     # Iterate over the reversed conversation history
-    for i in range(len(conversation_history) - 1, -1, -1):
-        msg = conversation_history[i]
-
-        # Count the tokens in the user message and model message
-        user_token_count = count_tokens_cached(msg['user_input'], i * 2)
-        model_token_count = count_tokens_cached(msg['response'], i * 2 + 1)
-
-        # Check if adding the user message and model message exceeds the token limit
-        if token_count + user_token_count + model_token_count > 29640:
-            break
-
+    for msg in reversed(conversation_history):
         user_message = {"role": "user", "parts": [{"text": msg['user_input']}]}
         model_message = {"role": "model", "parts": [{"text": msg['response']}]}
 
         messages.insert(0, model_message)
         messages.insert(0, user_message)
-
-        # Update the token count
-        token_count += user_token_count + model_token_count
 
     # Prepare the request payload for generating content
     payload = {
@@ -199,15 +147,8 @@ def edit():
 
     if message_type == 'user_input':
         conversation_history[index]['user_input'] = edited_text
-        # Invalidate the cache entry for the edited prompt
-        if index * 2 in token_count_cache:
-            del token_count_cache[index * 2]
     else:
         conversation_history[index]['response'] = edited_text
-
-    # Invalidate the cache entry for the corresponding response
-    if index * 2 + 1 in token_count_cache:
-        del token_count_cache[index * 2 + 1]
 
     if message_type == 'user_input':
         # Get the conversation history up to but not including the edited prompt
@@ -234,12 +175,6 @@ def edit():
 def delete():
     index = int(request.json['index'])
     conversation_history.pop(index)
-
-    # Update the token count cache indices
-    for i in range(index * 2, len(token_count_cache)):
-        if i in token_count_cache:
-            token_count_cache[i - 2] = token_count_cache.pop(i)
-
     return jsonify({"status": "success"})
 
 @app.route('/dump', methods=['POST'])
@@ -252,11 +187,6 @@ def import_data():
     data = request.json['data']
     global conversation_history
     conversation_history = json.loads(data)
-
-    # Invalidate the token count cache
-    global token_count_cache
-    token_count_cache = {}
-
     return jsonify({"status": "success"})
 
 if __name__ == '__main__':
