@@ -21,16 +21,13 @@ if GOOGLE_API_KEY is None:
 if GOOGLE_API_KEY is None:
     raise ValueError("API key not found. Please set the 'GEMINI_CHAT_API_KEY' environment variable or create a '.gemini-chat-api-key' file in your home directory.")
 
-# Set the model and safety settings
-MODEL = 'gemini-1.0-pro-latest'
-
 # Conversation history
 conversation_history = []
 
 API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:{function}?key={key}"
 
 
-def generate_response(prompt, conversation_history):
+def generate_response(prompt, conversation_history, model):
     messages = [{"role": "user", "parts": [{"text": prompt}]}]
 
     # Iterate over the reversed conversation history
@@ -73,7 +70,7 @@ def generate_response(prompt, conversation_history):
 
     # Make the POST request to the REST API to stream generate content
     response = requests.post(
-        API_URL.format(model=MODEL, function="streamGenerateContent", key=GOOGLE_API_KEY),
+        API_URL.format(model=model, function="streamGenerateContent", key=GOOGLE_API_KEY),
         headers={"Content-Type": "application/json"},
         json=payload,
         stream=True
@@ -127,7 +124,8 @@ def home():
 @app.route('/chat', methods=['POST'])
 def chat():
     user_input = request.json['user_input']
-    response_stream = generate_response(user_input, conversation_history)
+    model = request.json['model']
+    response_stream = generate_response(user_input, conversation_history, model)
 
     def generate(user_input):
         s = ''
@@ -150,37 +148,15 @@ def edit():
     else:
         conversation_history[index]['response'] = edited_text
 
-    if message_type == 'user_input':
-        # Get the conversation history up to but not including the edited prompt
-        conversation_history_subset = conversation_history[:index]
-        response_stream = generate_response(edited_text, conversation_history_subset)
-
-        def generate(index):
-            try:
-                s = ''
-                for chunk in response_stream:
-                    s += chunk
-                    yield chunk
-                conversation_history[index]['response'] = s.strip()
-            except BlockedPromptException as e:
-                error_message = "The content was blocked for reason: OTHER"
-                yield error_message
-                conversation_history[index]['response'] = error_message
-
-        return app.response_class(generate(index), mimetype='text/event-stream')
-
     return jsonify({"status": "success"})
 
 @app.route('/regenerate', methods=['POST'])
 def regenerate():
     index = int(request.json['index'])
+    model = request.json['model']
     conversation_history_subset = conversation_history[:index]
     prompt = conversation_history[index]['user_input']
-    response_stream = generate_response(prompt, conversation_history_subset)
-
-    # Invalidate the cache entry for the corresponding response
-    if index * 2 + 1 in token_count_cache:
-        del token_count_cache[index * 2 + 1]
+    response_stream = generate_response(prompt, conversation_history_subset, model)
 
     def generate(index):
         try:
