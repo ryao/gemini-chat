@@ -110,8 +110,12 @@ def generate_response(prompt, conversation_history, model):
 
                 if inside_json and bracket_count == 0:
                     data = json.loads("[" + buffer + "]")
-                    text = data[0]["candidates"][0]["content"]["parts"][0]["text"]
-                    yield text
+                    if "content" in data[0]["candidates"][0]:
+                        text = data[0]["candidates"][0]["content"]["parts"][0]["text"]
+                        yield text
+                    else:
+                        print (buffer)
+                        return
                     buffer = ""
                     inside_json = False
 
@@ -159,16 +163,11 @@ def regenerate():
     response_stream = generate_response(prompt, conversation_history_subset, model)
 
     def generate(index):
-        try:
-            s = ''
-            for chunk in response_stream:
-                s += chunk
-                yield chunk
-            conversation_history[index]['response'] = s.strip()
-        except BlockedPromptException as e:
-            error_message = "The content was blocked for reason: OTHER"
-            yield error_message
-            conversation_history[index]['response'] = error_message
+        s = ''
+        for chunk in response_stream:
+            s += chunk
+            yield chunk
+        conversation_history[index]['response'] = s.strip()
 
     return app.response_class(generate(index), mimetype='text/event-stream')
 
