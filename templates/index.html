@@ -56,7 +56,7 @@
         }
 
         $(document).ready(function() {
-            $('.chatbot-response span').each(function() {
+            $('.chatbot-response span, .user-input span').each(function() {
 		var originalText = $(this).attr('data-original-text');
                 if (originalText) {
                     $(this).html(renderMarkdown(originalText));
